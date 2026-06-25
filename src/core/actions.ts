@@ -19,6 +19,9 @@ const slug = (s: string): string =>
 
 function commandFor(provider: string): string {
   if (provider === "supabase") return "npx -y @supabase/mcp-server-supabase --read-only";
+  if (provider === "github") {
+    return "docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server";
+  }
   throw new ActionError(`Provider "${provider}" pas encore supporté.`);
 }
 

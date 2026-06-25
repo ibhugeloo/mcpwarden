@@ -8,6 +8,9 @@ import { runCommand } from "./commands/run.js";
 import { addCommand } from "./commands/add.js";
 import { applyCommand } from "./commands/apply.js";
 import { rollbackCommand } from "./commands/rollback.js";
+import { auditCommand } from "./commands/audit.js";
+import { initCommand } from "./commands/init.js";
+import { releaseCheckCommand } from "./commands/release-check.js";
 import { profileListCommand, profileUseCommand, profileShowCommand } from "./commands/profile.js";
 
 const program = new Command();
@@ -19,6 +22,12 @@ program
   .option("-r, --registry <dir>", "registry directory (default: ~/.config/mcpwarden)");
 
 program
+  .command("init")
+  .description("create a local registry in ~/.config/mcpwarden")
+  .option("--force", "overwrite existing registry files")
+  .action((cmdOpts) => initCommand({ ...program.opts(), ...cmdOpts }));
+
+program
   .command("list")
   .alias("ls")
   .description("list every account, server and resource with its policy")
@@ -27,7 +36,9 @@ program
 program
   .command("doctor")
   .description("validate the registry, secret-safety, adapters and policy sanity")
-  .action(() => doctorCommand(program.opts()));
+  .option("--privacy", "run stricter pre-publication privacy checks")
+  .option("--fix", "fix safe local issues such as registry file permissions")
+  .action((cmdOpts) => doctorCommand({ ...program.opts(), ...cmdOpts }));
 
 program
   .command("generate")
@@ -35,6 +46,17 @@ program
   .description("emit the MCP config from the registry (dry-run)")
   .option("-t, --target <client>", "target client", "claude")
   .action((cmdOpts) => generateCommand({ ...program.opts(), ...cmdOpts }));
+
+program
+  .command("audit")
+  .description("show what the active context exposes to MCP clients")
+  .option("--json", "emit machine-readable JSON")
+  .action((cmdOpts) => auditCommand({ ...program.opts(), ...cmdOpts }));
+
+program
+  .command("release-check")
+  .description("run the v0.1 public-release readiness gate")
+  .action(() => releaseCheckCommand());
 
 // profile — manage the active context (the exclusive set of exposed servers)
 const profile = program
@@ -85,7 +107,8 @@ program
   .command("serve")
   .description("serve the local web dashboard from the registry")
   .option("-p, --port <port>", "port", "4173")
-  .option("--host <host>", "bind host (use 0.0.0.0 for LAN/Tailscale)", "127.0.0.1")
+  .option("--host <host>", "bind host", "127.0.0.1")
+  .option("--allow-remote", "allow non-loopback binds such as 0.0.0.0")
   .action((cmdOpts) => serveCommand({ ...program.opts(), ...cmdOpts }));
 
 program.parseAsync().catch((e) => {

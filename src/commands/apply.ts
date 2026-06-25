@@ -27,6 +27,7 @@ export async function applyCommand(opts: {
   if (r.removed.length) console.log(`  ${chalk.red("- removed")}  ${list(r.removed)} ${chalk.gray("(not in active context)")}`);
   if (r.validated.length) console.log(`  ${chalk.green("✓ secret")}   ${list(r.validated)}`);
   if (r.unresolved.length) console.log(`  ${chalk.yellow("! secret")}   ${list(r.unresolved)} ${chalk.gray("(unreachable — vault locked or item missing)")}`);
+  for (const w of r.warnings) console.log(`  ${chalk.yellow("! warning")}  ${chalk.gray(w)}`);
   if (r.backup) console.log(`  ${chalk.gray(`backup    ${r.backup}`)}`);
   console.log("");
 }

@@ -7,8 +7,7 @@
  *    up the stack except to the single caller that applies them.
  *
  * Backends are pluggable. `vaultwarden://` shells out to the Bitwarden/Vaultwarden
- * CLI; `env://` reads an environment variable (useful for CI). Real Vaultwarden
- * wiring lands in the secret-resolver milestone — this is the contract + a guarded stub.
+ * CLI; `env://` reads an environment variable (useful for CI and tests).
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";

@@ -424,6 +424,7 @@ __ADD_PANEL__
       var apply = document.getElementById('apply-overlay');
       var overlays = [add, edit, registry, secret, disconnect, apply];
       var current = null; // service name for secret/edit/disconnect flows
+      var sessionToken = '__SESSION_TOKEN__';
 
       function open(el) { el.hidden = false; }
       function closeAll() {
@@ -440,13 +441,14 @@ __ADD_PANEL__
       }
       function showError(id, msg) { var e = document.getElementById(id); if (e) { e.textContent = msg; e.hidden = false; } }
       function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+      function apiHeaders() { return { 'content-type': 'application/json', 'x-mcpwarden-token': sessionToken }; }
 
       async function post(url, payload, errId, btn) {
         if (btn) btn.setAttribute('aria-busy', 'true');
         try {
           var r = await fetch(url, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: apiHeaders(),
             body: JSON.stringify(payload || {}),
           });
           var data = await r.json().catch(function () { return {}; });
@@ -505,6 +507,10 @@ __ADD_PANEL__
             secretRef: (document.getElementById('add-secret').value || '').trim(),
           }, 'add-error', t);
         }
+        else if (a === 'select-provider' && !t.disabled) {
+          document.querySelectorAll('.seg-opt').forEach(function (b) { b.classList.remove('is-active'); });
+          t.classList.add('is-active');
+        }
         else if (a === 'rotate') {
           current = svc; clearErrors();
           document.getElementById('secret-svc').textContent = svc;
@@ -530,7 +536,7 @@ __ADD_PANEL__
       async function doApply(btn) {
         btn.setAttribute('aria-busy', 'true');
         try {
-          var r = await fetch('/api/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+          var r = await fetch('/api/apply', { method: 'POST', headers: apiHeaders(), body: '{}' });
           var d = await r.json().catch(function () { return {}; });
           if (!r.ok || !d.ok) throw new Error(d.error || ('Erreur ' + r.status));
           renderApplyResult(d);
@@ -553,6 +559,7 @@ __ADD_PANEL__
         html += line('Retirés (hors contexte)', d.removed, 'warn');
         html += line('Secret vérifié', d.validated, 'ok');
         html += line('Secret injoignable', d.unresolved, 'warn');
+        html += line('Avertissement', d.warnings, 'warn');
         if (d.backup) html += '<div class="rline"><span class="rk">Sauvegarde</span><span class="rv"><code>' + d.backup.replace(/[&<>]/g, '') + '</code></span></div>';
         document.getElementById('apply-result-body').innerHTML = html || '<div class="rline"><span class="rv muted">Rien à appliquer.</span></div>';
         document.getElementById('apply-confirm').hidden = true;
@@ -565,7 +572,7 @@ __ADD_PANEL__
         body.innerHTML = '<p class="result"><span class="rv muted">Chargement…</span></p>';
         pathEl.textContent = '';
         try {
-          var r = await fetch('/api/registry');
+          var r = await fetch('/api/registry', { headers: { 'x-mcpwarden-token': sessionToken } });
           var d = await r.json().catch(function () { return {}; });
           if (!r.ok) throw new Error(d.error || ('Erreur ' + r.status));
           pathEl.textContent = d.dir || '';

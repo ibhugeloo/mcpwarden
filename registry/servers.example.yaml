@@ -32,3 +32,14 @@ servers:
         status: ACTIVE_HEALTHY
         region: eu-west-3
         client_data: true
+  - name: github-client
+    account: github-client
+    transport: stdio
+    command: docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
+    profiles:
+      - client
+    policy:
+      read_only: true
+      project_scope: account
+      write_requires_confirm: true
+    projects: []

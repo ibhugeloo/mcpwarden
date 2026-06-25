@@ -19,3 +19,12 @@ accounts:
     risk_domain: client
     org_id: your-client-org-id
     rotation_due: null
+  - id: github-client
+    provider: github
+    label: client GitHub account
+    email: github@client.example.com
+    auth: pat
+    secret_ref: vaultwarden://github-pat-client
+    risk_domain: client
+    org_id: your-client-org
+    rotation_due: null

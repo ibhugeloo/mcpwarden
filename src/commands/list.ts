@@ -5,7 +5,7 @@ import type { RiskDomain } from "../core/types.js";
 
 const riskColor: Record<RiskDomain, (s: string) => string> = {
   client: chalk.yellow,
-  internal: chalk.blue,
+  internal: chalk.gray,
   personal: chalk.green,
 };
 

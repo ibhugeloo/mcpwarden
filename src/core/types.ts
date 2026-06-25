@@ -87,7 +87,7 @@ export interface McpServerConfig {
   type: "stdio" | "sse" | "http";
   command: string;
   args: string[];
-  /** env values are secret REFERENCES at generation time; resolved only at apply time. */
+  /** Provider launch env. Adapters may put secret refs here; client config generation must not. */
   env: Record<string, string>;
 }
 
@@ -106,7 +106,7 @@ export interface ProviderAdapter {
   readonly label: string;
   /** Sensible default policy for a fresh server of this provider. */
   defaultPolicy(): ServerPolicy;
-  /** Build the client config entry for a server (env holds secret refs, not values). */
+  /** Build the real server launch config (env may hold secret refs, not values). */
   buildServerConfig(account: Account, server: McpServer): McpServerConfig;
   /** Optional: fetch the resources visible to this account (requires resolved secret). */
   listResources?(account: Account, secret: string): Promise<ProviderResource[]>;

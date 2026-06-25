@@ -19,6 +19,7 @@ state.yaml
 # the REAL registry stays local — only *.example.yaml is committed (no client data)
 registry/accounts.yaml
 registry/servers.yaml
+registry/state.yaml
 
 # os / editor
 .DS_Store

@@ -64,6 +64,8 @@ const ICON = {
 const LOGO = {
   supabase: () =>
     `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ECF8E" d="M11.9 23.2c-.5.6-1.5.3-1.5-.5l-.1-8.8h6c1 0 1.6 1.2.9 2l-5.3 7.3z"/><path fill="#3ECF8E" opacity=".55" d="M12.1.8c.5-.6 1.5-.3 1.5.5l.1 8.8h-6c-1 0-1.6-1.2-.9-2L12.1.8z"/></svg>`,
+  github: () =>
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#0F1115" d="M12 2.1a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.9c-2.9.6-3.5-1.2-3.5-1.2-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.6 1.1 1.6 1.1.9 1.6 2.5 1.1 3 .8.1-.7.4-1.1.7-1.4-2.3-.3-4.7-1.1-4.7-5a3.9 3.9 0 0 1 1-2.7c-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.5 9.5 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.4 4.7-4.7 5 .4.3.7.9.7 1.8v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2.1z"/></svg>`,
   vercel: () =>
     `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#0F1115" d="M12 4l9 16H3z"/></svg>`,
   sentry: () =>
@@ -72,10 +74,15 @@ const LOGO = {
 
 /** Displayed account name: the email address when present, else a cleaned label. */
 const acctName = (a: Account) => a.email ?? a.label.replace(/\s*account$/i, "").trim();
+const providerLogo = (provider: string): string =>
+  (LOGO as Record<string, () => string>)[provider]?.() ?? ICON.shield();
+const providerLabel = (provider: string): string =>
+  provider.charAt(0).toUpperCase() + provider.slice(1);
 
 /** One service row: provider logo · name · account · symbol-only quick actions. */
 function serviceRow(s: McpServer, accounts: Map<string, Account>): string {
   const acc = accounts.get(s.account)!;
+  const provider = acc.provider;
   const projects = s.resources;
   const active = projects.filter((p) => p.status === "ACTIVE_HEALTHY").length;
   const isLive = active > 0;
@@ -110,7 +117,7 @@ function serviceRow(s: McpServer, accounts: Map<string, Account>): string {
         <details class="svc">
           <summary class="svc-row">
             <span class="svc-status ${isLive ? "on" : "off"}" title="${isLive ? "Actif" : "Inactif"}" aria-hidden="true"></span>
-            <span class="svc-logo" title="Supabase" aria-hidden="true">${LOGO.supabase()}</span>
+            <span class="svc-logo" title="${e(providerLabel(provider))}" aria-hidden="true">${providerLogo(provider)}</span>
             <span class="svc-main">
               <span class="svc-name">${e(s.name)}</span>
               <span class="svc-sub">${email}</span>
@@ -164,11 +171,12 @@ function topologyWidget(servers: McpServer[], accounts: Map<string, Account>): s
   const leaves = servers
     .map((s) => {
       const acc = accounts.get(s.account)!;
+      const provider = acc.provider;
       const on = s.resources.some((p) => p.status === "ACTIVE_HEALTHY");
       const n = s.resources.length;
       return `        <div class="topo-leaf">
           <span class="tl-dot ${on ? "on" : "off"}" aria-hidden="true"></span>
-          <span class="tl-logo" aria-hidden="true">${LOGO.supabase()}</span>
+          <span class="tl-logo" aria-hidden="true">${providerLogo(provider)}</span>
           <span class="tl-body">
             <span class="tl-name">${e(s.name)}</span>
             <span class="tl-meta">${e(acctName(acc))} · ${n} projet${n > 1 ? "s" : ""}</span>
@@ -216,7 +224,8 @@ function addPanel(): string {
         <div class="field">
           <span class="field-label">Provider</span>
           <div class="seg" role="group" aria-label="Provider">
-            <button type="button" class="seg-opt is-active" data-provider="supabase"><span class="seg-logo">${LOGO.supabase()}</span>Supabase</button>
+            <button type="button" class="seg-opt is-active" data-action="select-provider" data-provider="supabase"><span class="seg-logo">${LOGO.supabase()}</span>Supabase</button>
+            <button type="button" class="seg-opt" data-action="select-provider" data-provider="github"><span class="seg-logo">${LOGO.github()}</span>GitHub</button>
             <button type="button" class="seg-opt is-disabled" disabled><span class="seg-logo">${LOGO.vercel()}</span>Vercel<span class="soon">bientôt</span></button>
             <button type="button" class="seg-opt is-disabled" disabled><span class="seg-logo">${LOGO.sentry()}</span>Sentry<span class="soon">bientôt</span></button>
           </div>
@@ -244,6 +253,7 @@ function addPanel(): string {
 export interface DashboardContext {
   active: string | null;
   profiles: string[];
+  sessionToken: string;
 }
 
 /** Empty state rendered when the registry has zero services configured. */
@@ -299,6 +309,7 @@ ${shown.length ? shown.map((s) => serviceRow(s, accounts)).join("\n") : emptySer
     __EXTERNAL_ICON__: ICON.external(),
     __VAULT_ICON__: ICON.vault(),
     __CLOSE_ICON__: ICON.close(),
+    __SESSION_TOKEN__: e(ctx.sessionToken),
   };
   let out = template();
   for (const [k, v] of Object.entries(repl)) out = out.split(k).join(v);

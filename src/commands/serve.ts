@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
@@ -11,33 +12,60 @@ import { renderDashboard } from "../web/render.js";
 /**
  * Local management console. GET re-renders from the registry on every request;
  * POST /api/* mutates the **mcpwarden registry** (never the live ~/.claude.json).
- * Binds to localhost by default; `--host 0.0.0.0` opts into LAN/Tailscale access.
+ * Binds to localhost by default. Remote binds require explicit friction because
+ * this surface mutates the local registry and can apply to ~/.claude.json.
  */
-export function serveCommand(opts: { registry?: string; port: string; host: string }): void {
+export function serveCommand(opts: {
+  registry?: string;
+  port: string;
+  host: string;
+  allowRemote?: boolean;
+}): void {
   const port = Number(opts.port) || 4173;
   const host = opts.host || "127.0.0.1";
+  const allowRemote = opts.allowRemote || process.env.MCPWARDEN_ALLOW_REMOTE === "1";
+
+  if (!isLoopbackHost(host) && !allowRemote) {
+    throw new Error(
+      `Refusing to bind mcpwarden console to "${host}" without --allow-remote. ` +
+        `The console can mutate your registry and apply ~/.claude.json.`,
+    );
+  }
+
+  const sessionToken = randomBytes(24).toString("base64url");
 
   const server = createServer((req, res) => {
-    const url = req.url ?? "/";
-    if (url === "/favicon.ico") return void res.writeHead(204).end();
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? `${host}:${port}`}`);
+    if (url.pathname === "/favicon.ico") return void res.writeHead(204).end();
 
-    if (req.method === "POST" && url.startsWith("/api/")) {
+    if (url.pathname.startsWith("/api/")) {
+      if (!isAuthorized(req, url, sessionToken) || !validOrigin(req)) {
+        return void sendJson(res, 403, { ok: false, error: "forbidden" });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/")) {
       handleApi(req, res, opts.registry);
       return;
     }
 
-    // GET /api/registry → raw YAML of both files (read-only preview, zero secrets)
-    if (req.method === "GET" && url === "/api/registry") {
+    // GET /api/registry → YAML preview. Secret references are redacted because
+    // vault item names can reveal client identities even though they are not values.
+    if (req.method === "GET" && url.pathname === "/api/registry") {
       try {
         const reg = loadRegistry(opts.registry);
-        const accounts = readFileSync(join(reg.dir, "accounts.yaml"), "utf8");
-        const servers = readFileSync(join(reg.dir, "servers.yaml"), "utf8");
-        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ dir: reg.dir, accounts, servers }));
+        const accounts = redactRegistryPreview(readFileSync(join(reg.dir, "accounts.yaml"), "utf8"));
+        const servers = redactRegistryPreview(readFileSync(join(reg.dir, "servers.yaml"), "utf8"));
+        sendJson(res, 200, { dir: reg.dir, accounts, servers });
       } catch (err) {
-        res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: false, error: (err as Error).message }));
+        sendJson(res, 500, { ok: false, error: (err as Error).message });
       }
+      return;
+    }
+
+    if (!isAuthorized(req, url, sessionToken)) {
+      res.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
+      res.end("mcpwarden console: use the session URL printed by the CLI.\n");
       return;
     }
 
@@ -47,7 +75,7 @@ export function serveCommand(opts: { registry?: string; port: string; host: stri
       const active = loadActiveProfile(reg.dir);
       const profiles = listProfiles(reg.servers);
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(renderDashboard(reg, ts, { active, profiles }));
+      res.end(renderDashboard(reg, ts, { active, profiles, sessionToken }));
     } catch (err) {
       res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
       res.end(`registry error:\n${(err as Error).message}`);
@@ -57,9 +85,47 @@ export function serveCommand(opts: { registry?: string; port: string; host: stri
   server.listen(port, host, () => {
     const shown = host === "0.0.0.0" ? "<this-machine-ip>" : host;
     console.log(`\n  ${chalk.green("●")} mcpwarden console ${chalk.gray("(local-first)")}`);
-    console.log(`  ${chalk.bold(`http://${shown}:${port}`)}\n`);
+    console.log(`  ${chalk.bold(`http://${shown}:${port}/?token=${sessionToken}`)}\n`);
     console.log(chalk.gray("  Ctrl-C to stop.\n"));
   });
+}
+
+function isLoopbackHost(host: string): boolean {
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+}
+
+function tokenFromRequest(req: IncomingMessage, url: URL): string | null {
+  const header = req.headers["x-mcpwarden-token"];
+  if (Array.isArray(header)) return header[0] ?? null;
+  return header ?? url.searchParams.get("token");
+}
+
+function isAuthorized(req: IncomingMessage, url: URL, sessionToken: string): boolean {
+  return tokenFromRequest(req, url) === sessionToken;
+}
+
+function validOrigin(req: IncomingMessage): boolean {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const host = req.headers.host;
+  if (!host) return false;
+  try {
+    const parsed = new URL(origin);
+    return parsed.host === host && (parsed.protocol === "http:" || parsed.protocol === "https:");
+  } catch {
+    return false;
+  }
+}
+
+function sendJson(res: ServerResponse, code: number, body: unknown): void {
+  res.writeHead(code, { "content-type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(body));
+}
+
+function redactRegistryPreview(raw: string): string {
+  return raw
+    .replace(/^(\s*secret_ref:\s*).+$/gm, "$1[redacted reference]")
+    .replace(/\b(?:vaultwarden|env):\/\/[^\s"',)]+/g, "[redacted reference]");
 }
 
 function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -82,8 +148,7 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 
 async function handleApi(req: IncomingMessage, res: ServerResponse, dir?: string): Promise<void> {
   const send = (code: number, body: unknown) => {
-    res.writeHead(code, { "content-type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(body));
+    sendJson(res, code, body);
   };
   try {
     const url = req.url ?? "";

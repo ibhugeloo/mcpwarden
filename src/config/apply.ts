@@ -51,6 +51,7 @@ export interface ApplyResult {
   validated: string[];
   /** servers whose secret could NOT be resolved (vault locked, item missing…) */
   unresolved: string[];
+  warnings: string[];
   changed: boolean;
   dryRun: boolean;
 }
@@ -80,6 +81,12 @@ export async function applyToClaude(
   const included = serversInProfile(reg.servers, profile);
   const includedNames = new Set(included.map((s) => s.name));
   const launcherCmd = launcherInvocation().command;
+  const accountsById = new Map(reg.accounts.map((a) => [a.id, a]));
+  const riskDomains = new Set(included.map((s) => accountsById.get(s.account)?.riskDomain).filter(Boolean));
+  const warnings =
+    !profile && riskDomains.has("client") && riskDomains.size > 1
+      ? ["context all exposes client and non-client accounts; use `mcpwarden profile use <ctx> --apply` for isolation"]
+      : [];
 
   // Generated entries (active profile only) are launcher calls — zero secret.
   const generated = generateClaudeConfig({ accounts: reg.accounts, servers: included }).mcpServers;
@@ -142,6 +149,7 @@ export async function applyToClaude(
     removed,
     validated,
     unresolved,
+    warnings,
     changed,
     dryRun: !!opts.dryRun,
   };

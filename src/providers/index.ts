@@ -1,8 +1,11 @@
 /** Provider adapter registry. Add a provider here and the whole CLI picks it up. */
 import type { ProviderAdapter } from "../core/types.js";
 import { supabaseAdapter } from "./supabase.js";
+import { githubAdapter } from "./github.js";
 
-const adapters = new Map<string, ProviderAdapter>([[supabaseAdapter.id, supabaseAdapter]]);
+const adapters = new Map<string, ProviderAdapter>(
+  [supabaseAdapter, githubAdapter].map((adapter) => [adapter.id, adapter]),
+);
 
 export function getAdapter(providerId: string): ProviderAdapter | undefined {
   return adapters.get(providerId);

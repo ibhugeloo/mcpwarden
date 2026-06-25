@@ -13,7 +13,9 @@
     "dev": "tsx src/cli.ts",
     "build": "tsup",
     "start": "node dist/cli.js",
-    "typecheck": "tsc --noEmit"
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "release:check": "tsx src/cli.ts release-check"
   },
   "keywords": [
     "mcp",
@@ -26,6 +28,14 @@
   ],
   "author": "Idriss Bhugeloo",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ibhugeloo/mcpwarden.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ibhugeloo/mcpwarden/issues"
+  },
+  "homepage": "https://github.com/ibhugeloo/mcpwarden#readme",
   "engines": {
     "node": ">=20"
   },

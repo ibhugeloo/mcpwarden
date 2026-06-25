@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light" />
+<title>mcpwarden — services MCP</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#F7F6F3;            /* warm bone canvas */
+    --surface:#FFFFFF;
+    --surface-2:#FBFBFA;
+    --surface-3:#F1EFEB;     /* warm chip / pill background */
+    --ink:#2F3437;           /* charcoal, never pure black */
+    --ink-2:#5C615F;
+    --ink-3:#8A8E8B;         /* muted meta */
+    --line:#E7E5E0;          /* ultra-light divider */
+    --line-2:#EFEDE9;
+    --accent:#346538;        /* single accent — sober green */
+    --accent-soft:#EDF3EC;
+    --danger:#9F2F2D;
+    --radius:10px;
+    --radius-sm:6px;
+    --sans:"SF Pro Display","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scrollbar-color:#D6D3CC var(--bg);scrollbar-width:thin}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:56px clamp(20px,5vw,40px) 96px}
+  code,.mono{font-family:var(--mono)}
+  button{font-family:inherit}
+  ::selection{background:var(--accent-soft)}
+
+  /* ── header ─────────────────────────────────────────────── */
+  .top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:40px}
+  .top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .brand h1{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-.02em;line-height:1.1;color:var(--ink)}
+  .brand p{font-size:14.5px;color:var(--ink-2);margin-top:6px;max-width:48ch}
+
+  /* ── buttons ────────────────────────────────────────────── */
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    font-size:13.5px;font-weight:500;line-height:1;white-space:nowrap;
+    border-radius:var(--radius-sm);border:1px solid transparent;
+    padding:9px 13px;transition:background .16s ease,border-color .16s ease,color .16s ease;
+  }
+  .btn svg{width:15px;height:15px;flex-shrink:0}
+  .btn:active{transform:scale(.985)}
+  .btn-lg{padding:11px 17px;font-size:14px}
+  .btn-primary{background:var(--ink);color:#fff;padding:11px 17px;font-size:14px}
+  .btn-primary:hover{background:#1f2426}
+  .btn-ghost{color:var(--ink-2);border-color:var(--line);background:var(--surface)}
+  .btn-ghost:hover{background:var(--surface-2);border-color:#DAD7D1;color:var(--ink)}
+  .btn-ghost.danger:hover{color:var(--danger);border-color:#E7CFCE}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;
+    border:1px solid transparent;border-radius:var(--radius-sm);background:none;color:var(--ink-3);cursor:pointer;text-decoration:none}
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+  .icon-btn.danger:hover{background:#FBF1F0;color:var(--danger)}
+  .icon-btn svg{width:16px;height:16px}
+  .icon-btn-bordered{width:38px;height:38px;border-color:var(--line);background:var(--surface);color:var(--ink-2)}
+  .icon-btn-bordered:hover{border-color:#DAD7D1;background:var(--surface-2);color:var(--ink)}
+
+  /* ── context switcher (exclusive profiles) ──────────────── */
+  .ctx-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .ctx-label{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-3);text-transform:uppercase}
+  .ctx-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .ctx-pill{font-size:13px;font-weight:500;color:var(--ink-2);background:var(--surface);
+    border:1px solid var(--line);border-radius:9999px;padding:6px 14px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,color .15s ease}
+  .ctx-pill:hover{border-color:#DAD7D1;background:var(--surface-2);color:var(--ink)}
+  .ctx-pill.is-active{color:#fff;background:var(--ink);border-color:var(--ink)}
+  .ctx-note{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .empty-state{padding:22px 20px;font-size:13.5px;color:var(--ink-3);text-align:center}
+  .empty-state strong{color:var(--ink-2);font-weight:600}
+
+  /* ── services block ─────────────────────────────────────── */
+  .block+.block{margin-top:38px}
+  .block-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:14px}
+  .block-head h2{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--ink)}
+  .block-head .count{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+  .services{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .service+.service{border-top:1px solid var(--line)}
+  details.svc{}
+  .svc-row{
+    display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;
+    align-items:center;gap:16px;padding:16px 20px;cursor:pointer;list-style:none;
+    transition:background .15s ease;
+  }
+  .svc-row::-webkit-details-marker{display:none}
+  .svc-row:hover{background:var(--surface-2)}
+  .svc-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .svc-status.on{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .svc-status.off{background:#CFCDC7}
+  .svc-logo{display:inline-flex;flex-shrink:0}
+  .svc-logo svg{width:18px;height:18px;display:block}
+  .svc-main{min-width:0;display:flex;flex-direction:column;gap:1px}
+  .svc-name{font-size:14.5px;font-weight:550;color:var(--ink);font-family:var(--mono);letter-spacing:-.01em}
+  .svc-sub{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .svc-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+  .svc-toggle{display:inline-flex;color:var(--ink-3);transition:transform .2s ease;flex-shrink:0}
+  .svc-toggle svg{width:16px;height:16px}
+  details.svc[open] .svc-toggle{transform:rotate(90deg)}
+
+  /* collapsible detail — secondary info */
+  .svc-detail{padding:2px 20px 18px 46px;border-top:1px solid var(--line-2);background:var(--surface-2)}
+  .svc-markers{display:flex;flex-wrap:wrap;gap:8px;padding:14px 0 12px}
+  .marker{font-size:11.5px;color:var(--ink-2);background:var(--surface-3);border:1px solid var(--line);
+    padding:2px 9px;border-radius:9999px;letter-spacing:.01em}
+  .marker.muted{color:var(--ink-3);background:transparent;border-color:var(--line-2)}
+  .secret-line{display:flex;align-items:center;gap:9px;padding:10px 0 14px;font-size:12.5px;color:var(--ink-2);
+    border-bottom:1px solid var(--line-2);margin-bottom:4px}
+  .secret-line .sl-icon{display:inline-flex;color:var(--ink-3)}
+  .secret-line .sl-icon svg{width:15px;height:15px}
+  .secret-line .sl-label{font-weight:600;color:var(--ink)}
+  .secret-line .sl-ref{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--surface-3);
+    border:1px solid var(--line);border-radius:var(--radius-sm);padding:2px 8px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48ch}
+  .secret-line .sl-link{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--accent);
+    text-decoration:none;font-weight:500;flex-shrink:0}
+  .secret-line .sl-link svg{width:13px;height:13px}
+  .secret-line .sl-link:hover{text-decoration:underline}
+  .proj-list{list-style:none;display:flex;flex-direction:column}
+  .prow{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:13px}
+  .prow+.prow{border-top:1px solid var(--line-2)}
+  .pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .pdot.on{background:var(--accent)} .pdot.off{background:#D2D0CA}
+  .pname{font-weight:500;color:var(--ink);font-family:var(--mono);font-size:12.5px}
+  .palias{color:var(--ink-3);font-weight:400}
+  .pflag{font-size:11px;color:var(--ink-2);background:var(--surface-3);padding:1px 8px;border-radius:9999px}
+  .pmeta{margin-left:auto;color:var(--ink-3);font-size:12px;font-family:var(--mono)}
+  .pstate{color:var(--ink-2);font-size:12.5px;min-width:48px;text-align:right}
+
+  /* ── secrets footnote ───────────────────────────────────── */
+  .secrets-note{
+    display:flex;align-items:center;gap:14px;
+    padding:16px 20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+  }
+  .secrets-note .si{flex-shrink:0;display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;
+    border-radius:var(--radius-sm);background:var(--accent-soft);color:var(--accent)}
+  .secrets-note .si svg{width:18px;height:18px}
+  .secrets-note .st{flex:1;min-width:0}
+  .secrets-note .st strong{font-weight:600;font-size:13.5px;color:var(--ink)}
+  .secrets-note .st span{display:block;font-size:13px;color:var(--ink-2);margin-top:1px}
+
+  .foot{margin-top:40px;font-size:12.5px;color:var(--ink-3);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .foot code{font-size:12px;color:var(--ink-3)}
+
+  /* ── add-service sheet (mock) ───────────────────────────── */
+  .overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:rgba(47,52,55,.28);backdrop-filter:blur(2px)}
+  .overlay[hidden]{display:none}
+  .sheet{width:100%;max-width:460px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:26px 26px 22px;
+    box-shadow:0 12px 40px rgba(47,52,55,.10),0 2px 8px rgba(47,52,55,.04)}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .sheet-head h2{font-family:var(--serif);font-weight:500;font-size:21px;letter-spacing:-.01em;color:var(--ink)}
+  .sheet-lead{font-size:13.5px;color:var(--ink-2);margin-bottom:20px}
+  .form{display:flex;flex-direction:column;gap:18px}
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field-label{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .field-hint{font-size:12px;color:var(--ink-3)}
+  .input{width:100%;font-size:14px;color:var(--ink);background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;transition:border-color .15s ease}
+  .input::placeholder{color:#B6B3AC}
+  .input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .input.mono{font-family:var(--mono);font-size:13px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg-opt{font-size:13px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:8px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .seg-opt.is-active{color:var(--accent);background:var(--accent-soft);border-color:#CFE0CE;font-weight:550}
+  .seg-opt.is-disabled{color:var(--ink-3);cursor:not-allowed;opacity:.7}
+  .seg-opt .soon{font-size:10.5px;color:var(--ink-3);background:var(--surface-3);border-radius:9999px;padding:1px 6px;letter-spacing:.02em}
+  .sheet-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+  .form-error{font-size:12.5px;color:var(--danger);background:#FBF1F0;border:1px solid #E7CFCE;
+    border-radius:var(--radius-sm);padding:8px 11px;margin-top:-4px}
+  .form-error[hidden]{display:none}
+  .confirm-text{font-size:14px;color:var(--ink-2);margin-bottom:20px}
+  .confirm-text strong{color:var(--ink);font-family:var(--mono);font-weight:550}
+  .result{font-size:13.5px;color:var(--ink-2);margin-bottom:18px;display:flex;flex-direction:column;gap:9px}
+  .result .rline{display:flex;gap:9px;align-items:baseline}
+  .result .rk{flex-shrink:0;font-weight:600;color:var(--ink)}
+  .result .rv{font-family:var(--mono);font-size:12.5px}
+  .result .ok{color:var(--accent)}
+  .result .warn{color:#9A6B16}
+  .result .muted{color:var(--ink-3)}
+  .result code{font-size:12px;word-break:break-all}
+  .btn[aria-busy="true"]{opacity:.6;pointer-events:none}
+  .btn-danger{background:var(--danger);color:#fff;padding:11px 17px}
+  .btn-danger:hover{background:#872826}
+  .seg-opt .seg-logo{display:inline-flex}
+  .seg-opt .seg-logo svg{width:15px;height:15px;display:block}
+
+  /* ── topology widget ────────────────────────────────────── */
+  .topo-flow{display:flex;align-items:stretch;gap:14px;flex-wrap:wrap;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:20px}
+  .topo-node{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:128px;
+    padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+  .topo-node.hub{border-color:#CFE0CE;background:var(--accent-soft)}
+  .topo-node .tn-icon{color:var(--ink-2)}
+  .topo-node.hub .tn-icon{color:var(--accent)}
+  .tn-icon svg{width:18px;height:18px}
+  .tn-label{font-weight:600;font-size:13.5px;color:var(--ink)}
+  .tn-meta{font-size:11.5px;color:var(--ink-3)}
+  .topo-arrow{display:flex;align-items:center;color:#C9C6BF}
+  .topo-arrow svg{width:26px;height:14px}
+  .topo-leaves{display:flex;flex-direction:column;justify-content:center;gap:8px;flex:1;min-width:220px}
+  .topo-leaf{display:flex;align-items:center;gap:10px;padding:9px 12px;
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+  .tl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .tl-dot.on{background:var(--accent)} .tl-dot.off{background:#CFCDC7}
+  .tl-logo{display:inline-flex;flex-shrink:0} .tl-logo svg{width:15px;height:15px;display:block}
+  .tl-body{display:flex;flex-direction:column;min-width:0;line-height:1.35}
+  .tl-name{font-family:var(--mono);font-size:12.5px;font-weight:550;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tl-meta{font-size:11.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ── registry preview ───────────────────────────────────── */
+  .sheet-wide{max-width:680px}
+  .reg-group+.reg-group{margin-top:16px}
+  .reg-file{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--ink-2);
+    display:flex;align-items:center;gap:7px;margin-bottom:6px}
+  .reg-pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink-2);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:14px 16px;overflow:auto;max-height:40vh;white-space:pre;-webkit-font-smoothing:auto}
+  .reg-path{font-size:11.5px;color:var(--ink-3);margin-bottom:16px;word-break:break-all}
+
+  /* ── global empty state (zero services configured) ─────────── */
+  .empty-global{
+    display:flex;flex-direction:column;align-items:center;
+    padding:52px 28px 56px;text-align:center;
+  }
+  .eg-icon{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:52px;height:52px;border-radius:var(--radius);
+    border:1px solid var(--line);background:var(--surface-2);
+    color:var(--ink-3);margin-bottom:20px;flex-shrink:0;
+  }
+  .eg-icon svg{width:26px;height:26px}
+  .eg-title{
+    font-family:var(--serif);font-weight:500;font-size:19px;
+    letter-spacing:-.015em;color:var(--ink);margin-bottom:8px;line-height:1.2;
+  }
+  .eg-body{
+    font-size:13.5px;color:var(--ink-2);max-width:34ch;
+    line-height:1.55;margin-bottom:24px;
+  }
+
+  /* ── responsive ─────────────────────────────────────────── */
+  @media(max-width:620px){
+    .topo-flow{flex-direction:column;align-items:stretch}
+    .topo-arrow{align-self:center;transform:rotate(90deg)}
+    .topo-node{min-width:0}
+  }
+  @media(max-width:560px){
+    .svc-row{gap:10px 12px;padding:14px 16px}
+    .svc-detail{padding-left:16px;padding-right:16px}
+    .secret-line{flex-wrap:wrap}
+    .secret-line .sl-link{margin-left:0}
+    .secrets-note{flex-wrap:wrap}
+    .secrets-note .st{flex:1 1 100%;min-width:0}
+    .secrets-note .btn{flex:1 1 100%;justify-content:center}
+  }
+  @media(max-width:440px){
+    .wrap{padding:40px 16px 72px}
+    .top{align-items:flex-start}
+    .top-actions{width:100%}
+    .top-actions .btn-lg{flex:1;justify-content:center}
+    .svc-logo{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <h1>mcpwarden</h1>
+        <p>Connectez plusieurs comptes (Supabase, et bientôt d'autres) à Claude Code sans tout mélanger&nbsp;: un serveur MCP isolé par compte, les secrets gardés dans Vaultwarden, le tout appliqué à votre config en un clic.</p>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="icon-btn icon-btn-bordered" data-action="open-registry" title="Aperçu du registre" aria-label="Aperçu du registre">__EYE_ICON__</button>
+        <button type="button" class="btn btn-ghost btn-lg" data-action="open-apply">__UPLOAD_ICON__ Appliquer à Claude Code</button>
+        <button type="button" class="btn btn-primary btn-lg" data-action="open-add">__PLUS_ICON__ Ajouter un service</button>
+      </div>
+    </header>
+
+__SERVICES_BLOCK__
+
+__TOPOLOGY__
+
+    <section class="block">
+      <div class="secrets-note">
+        <span class="si" aria-hidden="true">__VAULT_ICON__</span>
+        <span class="st">
+          <strong>Secrets stockés dans Vaultwarden</strong>
+          <span>__SECRET_COUNT__ références — aucun secret en clair. Changez-en un depuis la ligne du service concerné.</span>
+        </span>
+        <a class="btn btn-ghost" href="__VAULT_URL__" target="_blank" rel="noopener">__EXTERNAL_ICON__ Ouvrir Vaultwarden</a>
+      </div>
+
+      <div class="foot">
+        <span>Généré depuis <code>registry/*.yaml</code></span>
+        <span>Mis à jour <span class="mono">__TS__</span></span>
+      </div>
+    </section>
+  </div>
+
+__ADD_PANEL__
+
+  <div class="overlay" id="edit-overlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <div class="sheet-head">
+        <h2 id="edit-title">Modifier le compte</h2>
+        <button type="button" class="icon-btn" data-action="close-edit" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <p class="sheet-lead">Service <strong id="edit-svc" class="mono"></strong> — adresse e-mail affichée comme nom du compte.</p>
+      <form class="form" onsubmit="return false">
+        <label class="field">
+          <span class="field-label">Adresse e-mail du compte</span>
+          <input class="input" id="edit-email" type="text" placeholder="vous@exemple.com" autocomplete="off" />
+          <span class="field-hint">Sert d'identité affichée — pas un secret.</span>
+        </label>
+        <p class="form-error" id="edit-error" hidden></p>
+        <div class="sheet-foot">
+          <button type="button" class="btn btn-ghost" data-action="close-edit">Annuler</button>
+          <button type="button" class="btn btn-primary" data-action="submit-edit">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="registry-overlay" hidden>
+    <div class="sheet sheet-wide" role="dialog" aria-modal="true" aria-labelledby="registry-title">
+      <div class="sheet-head">
+        <h2 id="registry-title">Aperçu du registre</h2>
+        <button type="button" class="icon-btn" data-action="close-registry" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <p class="sheet-lead">Deux fichiers YAML — la source de vérité. Zéro secret&nbsp;: uniquement des références.</p>
+      <p class="reg-path" id="registry-path"></p>
+      <div id="registry-body">
+        <p class="result"><span class="rv muted">Chargement…</span></p>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-primary" data-action="close-registry">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="secret-overlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="secret-title">
+      <div class="sheet-head">
+        <h2 id="secret-title">Changer le secret</h2>
+        <button type="button" class="icon-btn" data-action="close-secret" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <p class="sheet-lead">Service <strong id="secret-svc" class="mono"></strong> — nouvelle référence Vaultwarden.</p>
+      <form class="form" onsubmit="return false">
+        <label class="field">
+          <span class="field-label">Référence du secret</span>
+          <input class="input mono" id="secret-ref" type="text" placeholder="vaultwarden://supabase-pat-…" autocomplete="off" />
+          <span class="field-hint">Une référence — jamais le secret en clair.</span>
+        </label>
+        <p class="form-error" id="secret-error" hidden></p>
+        <div class="sheet-foot">
+          <button type="button" class="btn btn-ghost" data-action="close-secret">Annuler</button>
+          <button type="button" class="btn btn-primary" data-action="submit-secret">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="disconnect-overlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="disconnect-title">
+      <div class="sheet-head">
+        <h2 id="disconnect-title">Déconnecter le service</h2>
+        <button type="button" class="icon-btn" data-action="close-disconnect" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <p class="confirm-text">Retirer <strong id="disconnect-svc"></strong> du registre&nbsp;? Le service ne sera plus géré par mcpwarden. Sans incidence sur votre configuration Claude Code tant qu'elle n'est pas régénérée.</p>
+      <p class="form-error" id="disconnect-error" hidden></p>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-ghost" data-action="close-disconnect">Annuler</button>
+        <button type="button" class="btn btn-danger" data-action="submit-disconnect">Déconnecter</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="apply-overlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="apply-title">
+      <div class="sheet-head">
+        <h2 id="apply-title">Appliquer à Claude Code</h2>
+        <button type="button" class="icon-btn" data-action="close-apply" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <div id="apply-confirm">
+        <p class="confirm-text">Écrire les services gérés dans <strong>~/.claude.json</strong>. Chaque entrée est un appel <code>mcpwarden run</code> — <b>aucun secret ni référence</b> n'est écrit dans le fichier&nbsp;; le secret est résolu depuis le coffre au lancement. Une <b>sauvegarde horodatée</b> est créée et le reste de votre configuration est préservé.</p>
+        <p class="form-error" id="apply-error" hidden></p>
+        <div class="sheet-foot">
+          <button type="button" class="btn btn-ghost" data-action="close-apply">Annuler</button>
+          <button type="button" class="btn btn-primary" data-action="submit-apply">Appliquer</button>
+        </div>
+      </div>
+      <div id="apply-result" hidden>
+        <div class="result" id="apply-result-body"></div>
+        <div class="sheet-foot">
+          <button type="button" class="btn btn-primary" data-action="close-apply">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var add = document.getElementById('add-overlay');
+      var edit = document.getElementById('edit-overlay');
+      var registry = document.getElementById('registry-overlay');
+      var secret = document.getElementById('secret-overlay');
+      var disconnect = document.getElementById('disconnect-overlay');
+      var apply = document.getElementById('apply-overlay');
+      var overlays = [add, edit, registry, secret, disconnect, apply];
+      var current = null; // service name for secret/edit/disconnect flows
+
+      function open(el) { el.hidden = false; }
+      function closeAll() {
+        overlays.forEach(function (o) { o.hidden = true; });
+        // reset apply modal to its confirm state
+        document.getElementById('apply-confirm').hidden = false;
+        document.getElementById('apply-result').hidden = true;
+        clearErrors();
+      }
+      function clearErrors() {
+        ['add-error', 'edit-error', 'secret-error', 'disconnect-error', 'apply-error'].forEach(function (id) {
+          var e = document.getElementById(id); if (e) { e.hidden = true; e.textContent = ''; }
+        });
+      }
+      function showError(id, msg) { var e = document.getElementById(id); if (e) { e.textContent = msg; e.hidden = false; } }
+      function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+      async function post(url, payload, errId, btn) {
+        if (btn) btn.setAttribute('aria-busy', 'true');
+        try {
+          var r = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload || {}),
+          });
+          var data = await r.json().catch(function () { return {}; });
+          if (!r.ok || !data.ok) throw new Error(data.error || ('Erreur ' + r.status));
+          location.reload();
+        } catch (err) {
+          if (btn) btn.removeAttribute('aria-busy');
+          showError(errId, err.message);
+        }
+      }
+
+      document.addEventListener('click', function (ev) {
+        // links inside a service row (e.g. "Ouvrir Vaultwarden") must open
+        // without toggling the <details> — open them ourselves and stop the toggle.
+        var rowLink = ev.target.closest('.svc-row a[href]');
+        if (rowLink) { ev.preventDefault(); window.open(rowLink.getAttribute('href'), '_blank', 'noopener'); return; }
+
+        var t = ev.target.closest('[data-action]');
+        if (!t) {
+          if (overlays.indexOf(ev.target) >= 0) closeAll();
+          return;
+        }
+        var a = t.getAttribute('data-action');
+        var svc = t.getAttribute('data-service');
+
+        // action buttons live inside <summary> — stop the native <details> toggle
+        if (['edit', 'rotate', 'disconnect', 'submit-secret', 'submit-disconnect'].indexOf(a) >= 0) ev.preventDefault();
+
+        if (a === 'set-profile') {
+          if (t.classList.contains('is-active')) return; // already active
+          post('/api/profile', { name: t.getAttribute('data-profile') || 'all' }, null, t);
+        }
+        else if (a === 'open-add') { clearErrors(); open(add); }
+        else if (a === 'open-apply') { clearErrors(); open(apply); }
+        else if (a === 'open-registry') { clearErrors(); open(registry); loadRegistryPreview(); }
+        else if (a === 'close-add' || a === 'close-edit' || a === 'close-registry' || a === 'close-secret' || a === 'close-disconnect' || a === 'close-apply') closeAll();
+        else if (a === 'submit-apply') { clearErrors(); doApply(t); }
+        else if (a === 'edit') {
+          current = svc; clearErrors();
+          document.getElementById('edit-svc').textContent = svc;
+          document.getElementById('edit-email').value = t.getAttribute('data-email') || '';
+          open(edit);
+        }
+        else if (a === 'submit-edit') {
+          clearErrors();
+          post('/api/services/' + encodeURIComponent(current) + '/edit',
+            { email: (document.getElementById('edit-email').value || '').trim() }, 'edit-error', t);
+        }
+        else if (a === 'submit-add') {
+          clearErrors();
+          var prov = (document.querySelector('.seg-opt.is-active') || {}).getAttribute
+            ? document.querySelector('.seg-opt.is-active').getAttribute('data-provider') : 'supabase';
+          post('/api/services', {
+            provider: prov || 'supabase',
+            account: (document.getElementById('add-account').value || '').trim(),
+            secretRef: (document.getElementById('add-secret').value || '').trim(),
+          }, 'add-error', t);
+        }
+        else if (a === 'rotate') {
+          current = svc; clearErrors();
+          document.getElementById('secret-svc').textContent = svc;
+          document.getElementById('secret-ref').value = '';
+          open(secret);
+        }
+        else if (a === 'submit-secret') {
+          clearErrors();
+          post('/api/services/' + encodeURIComponent(current) + '/secret',
+            { secretRef: (document.getElementById('secret-ref').value || '').trim() }, 'secret-error', t);
+        }
+        else if (a === 'disconnect') {
+          current = svc; clearErrors();
+          document.getElementById('disconnect-svc').textContent = svc;
+          open(disconnect);
+        }
+        else if (a === 'submit-disconnect') {
+          clearErrors();
+          post('/api/services/' + encodeURIComponent(current) + '/disconnect', {}, 'disconnect-error', t);
+        }
+      });
+
+      async function doApply(btn) {
+        btn.setAttribute('aria-busy', 'true');
+        try {
+          var r = await fetch('/api/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+          var d = await r.json().catch(function () { return {}; });
+          if (!r.ok || !d.ok) throw new Error(d.error || ('Erreur ' + r.status));
+          renderApplyResult(d);
+        } catch (err) {
+          showError('apply-error', err.message);
+        } finally {
+          btn.removeAttribute('aria-busy');
+        }
+      }
+      function line(k, vals, cls) {
+        if (!vals || !vals.length) return '';
+        return '<div class="rline"><span class="rk">' + k + '</span><span class="rv ' + (cls || '') +
+          '">' + vals.map(function (s) { return s.replace(/[&<>]/g, ''); }).join(', ') + '</span></div>';
+      }
+      function renderApplyResult(d) {
+        var html = '';
+        if (!d.changed) html += '<div class="rline"><span class="rv muted">Aucun changement — la configuration est déjà à jour.</span></div>';
+        html += line('Ajoutés', d.added, 'ok');
+        html += line('Mis à jour', d.updated, 'ok');
+        html += line('Retirés (hors contexte)', d.removed, 'warn');
+        html += line('Secret vérifié', d.validated, 'ok');
+        html += line('Secret injoignable', d.unresolved, 'warn');
+        if (d.backup) html += '<div class="rline"><span class="rk">Sauvegarde</span><span class="rv"><code>' + d.backup.replace(/[&<>]/g, '') + '</code></span></div>';
+        document.getElementById('apply-result-body').innerHTML = html || '<div class="rline"><span class="rv muted">Rien à appliquer.</span></div>';
+        document.getElementById('apply-confirm').hidden = true;
+        document.getElementById('apply-result').hidden = false;
+      }
+
+      async function loadRegistryPreview() {
+        var body = document.getElementById('registry-body');
+        var pathEl = document.getElementById('registry-path');
+        body.innerHTML = '<p class="result"><span class="rv muted">Chargement…</span></p>';
+        pathEl.textContent = '';
+        try {
+          var r = await fetch('/api/registry');
+          var d = await r.json().catch(function () { return {}; });
+          if (!r.ok) throw new Error(d.error || ('Erreur ' + r.status));
+          pathEl.textContent = d.dir || '';
+          body.innerHTML = group('accounts.yaml', d.accounts) + group('servers.yaml', d.servers);
+        } catch (err) {
+          body.innerHTML = '<p class="form-error" style="display:block">' + esc(err.message) + '</p>';
+        }
+      }
+      function group(file, content) {
+        return '<div class="reg-group"><div class="reg-file">' + esc(file) +
+          '</div><pre class="reg-pre">' + esc(content || '') + '</pre></div>';
+      }
+
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') closeAll();
+      });
+    })();
+  </script>
+</body>
+</html>

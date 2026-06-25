@@ -1,0 +1,27 @@
+# deps & build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# --- SECRET-SAFE: never commit anything resembling a credential ---
+.env
+.env.*
+*.secret
+*.key
+*.pem
+secrets/
+# real user registry lives in ~/.config/mcpwarden — never in the repo
+.mcpwarden/
+registry.local.*
+# local, non-canonical state (active profile, backups)
+state.yaml
+*.mcpwarden-bak-*
+# the REAL registry stays local — only *.example.yaml is committed (no client data)
+registry/accounts.yaml
+registry/servers.yaml
+
+# os / editor
+.DS_Store
+*.log
+.idea/
+.vscode/

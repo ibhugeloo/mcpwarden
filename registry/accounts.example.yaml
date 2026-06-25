@@ -1,0 +1,21 @@
+# mcpwarden — EXAMPLE accounts. Copy to accounts.yaml and edit for your own setup.
+# ZERO secrets here — only vault references (vaultwarden://item). Never a real token.
+accounts:
+  - id: personal
+    provider: supabase
+    label: personal account
+    email: you@example.com
+    auth: pat
+    secret_ref: vaultwarden://supabase-pat-personal
+    risk_domain: personal
+    org_id: your-personal-org-id
+    rotation_due: null
+  - id: client
+    provider: supabase
+    label: client account
+    email: you@client.example.com
+    auth: pat
+    secret_ref: vaultwarden://supabase-pat-client
+    risk_domain: client
+    org_id: your-client-org-id
+    rotation_due: null

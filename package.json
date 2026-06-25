@@ -1,0 +1,44 @@
+{
+  "name": "mcpwarden",
+  "version": "0.0.0",
+  "description": "Local-first CLI/TUI to manage multi-account MCP servers across providers — secret-safe by design.",
+  "type": "module",
+  "bin": {
+    "mcpwarden": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cli",
+    "tui",
+    "multi-account",
+    "supabase",
+    "developer-tools"
+  ],
+  "author": "Idriss Bhugeloo",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "yaml": "^2.5.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

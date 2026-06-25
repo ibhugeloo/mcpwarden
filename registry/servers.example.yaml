@@ -1,0 +1,34 @@
+# mcpwarden — EXAMPLE servers. Copy to servers.yaml and edit for your own setup.
+# `profiles:` tags a server with one or more exclusive contexts (untagged = ubiquitous).
+servers:
+  - name: supabase-personal
+    account: personal
+    transport: stdio
+    command: npx -y @supabase/mcp-server-supabase --read-only
+    profiles:
+      - perso
+    policy:
+      read_only: true
+      project_scope: account
+      write_requires_confirm: true
+    projects:
+      - ref: your-project-ref
+        name: my-app
+        status: ACTIVE_HEALTHY
+        region: eu-west-3
+  - name: supabase-client
+    account: client
+    transport: stdio
+    command: npx -y @supabase/mcp-server-supabase --read-only
+    profiles:
+      - client
+    policy:
+      read_only: true
+      project_scope: account
+      write_requires_confirm: true
+    projects:
+      - ref: client-project-ref
+        name: client-app
+        status: ACTIVE_HEALTHY
+        region: eu-west-3
+        client_data: true

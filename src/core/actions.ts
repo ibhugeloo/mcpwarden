@@ -22,6 +22,8 @@ function commandFor(provider: string): string {
   if (provider === "github") {
     return "docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server";
   }
+  if (provider === "sentry") return "npx -y @sentry/mcp-server";
+  if (provider === "notion") return "npx -y @notionhq/notion-mcp-server";
   throw new ActionError(`Provider "${provider}" pas encore supporté.`);
 }
 

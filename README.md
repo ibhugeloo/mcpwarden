@@ -106,7 +106,10 @@ Release notes and manual smoke tests live in [`docs/RELEASE.md`](docs/RELEASE.md
 ### Post-v0.1
 
 - [ ] Ink TUI dashboard
-- [ ] More providers beyond Supabase/GitHub (Vercel, Sentry, Notion…)
+- [x] More providers beyond Supabase/GitHub — Sentry and Notion (official servers,
+  env-injected secrets). Vercel is deliberately on hold: the community stdio server
+  only accepts the token via **process args** (visible in `ps`, breaks the no-secret
+  invariant) and the official server is remote OAuth — neither fits the launcher model.
 - [x] Exportable audit report
 - [ ] Team/SaaS control plane design
 
@@ -116,8 +119,9 @@ Release notes and manual smoke tests live in [`docs/RELEASE.md`](docs/RELEASE.md
 |----------|:----------:|:--------------:|:------:|
 | Supabase | ✅ | ⏳ | ✅ |
 | GitHub   | ✅ | ⏳ | ✅ |
-| Vercel   | ⏳ | ⏳ | ⏳ |
-| Sentry   | ⏳ | ⏳ | ⏳ |
+| Sentry   | ✅ | ⏳ | ✅ |
+| Notion   | ✅ | — | ✅ |
+| Vercel   | ⏸ on hold — no env-secret stdio server today | | |
 
 ## License
 

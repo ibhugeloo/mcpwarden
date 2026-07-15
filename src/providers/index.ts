@@ -2,9 +2,14 @@
 import type { ProviderAdapter } from "../core/types.js";
 import { supabaseAdapter } from "./supabase.js";
 import { githubAdapter } from "./github.js";
+import { sentryAdapter } from "./sentry.js";
+import { notionAdapter } from "./notion.js";
 
 const adapters = new Map<string, ProviderAdapter>(
-  [supabaseAdapter, githubAdapter].map((adapter) => [adapter.id, adapter]),
+  [supabaseAdapter, githubAdapter, sentryAdapter, notionAdapter].map((adapter) => [
+    adapter.id,
+    adapter,
+  ]),
 );
 
 export function getAdapter(providerId: string): ProviderAdapter | undefined {

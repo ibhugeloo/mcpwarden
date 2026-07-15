@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { listCommand } from "./commands/list.js";
 import { doctorCommand } from "./commands/doctor.js";
@@ -18,7 +19,9 @@ const program = new Command();
 program
   .name("mcpwarden")
   .description("Manage multi-account MCP servers across providers — local-first, secret-safe.")
-  .version("0.0.0")
+  .version(
+    (createRequire(import.meta.url)("../package.json") as { version: string }).version,
+  )
   .option("-r, --registry <dir>", "registry directory (default: ~/.config/mcpwarden)");
 
 program
@@ -54,6 +57,15 @@ program
   .option("--format <format>", "output format: text, json, markdown")
   .option("-o, --output <file>", "write audit output to a file (defaults to markdown format)")
   .action((cmdOpts) => auditCommand({ ...program.opts(), ...cmdOpts }));
+
+program
+  .command("tui")
+  .description("interactive dashboard — browse contexts and set the active profile")
+  .action(async () => {
+    // lazy import: keep ink/react out of the startup path of every other verb
+    const { tuiCommand } = await import("./commands/tui.js");
+    await tuiCommand(program.opts());
+  });
 
 program
   .command("release-check")

@@ -58,6 +58,10 @@ mcpwarden audit --output audit.md
 `mcpwarden doctor --fix` only performs conservative local fixes, currently registry file
 permissions.
 
+`mcpwarden tui` opens an interactive dashboard (Ink): browse contexts with ←/→ as a live
+preview, press Enter to set the active profile. Nothing is pushed to the client from the
+TUI — `mcpwarden apply` stays the explicit step.
+
 ## What it is — and is not
 
 mcpwarden is **not** another generic "MCP manager" — that category is crowded. It is a
@@ -105,7 +109,7 @@ Release notes and manual smoke tests live in [`docs/RELEASE.md`](docs/RELEASE.md
 
 ### Post-v0.1
 
-- [ ] Ink TUI dashboard
+- [x] Ink TUI dashboard — `mcpwarden tui` (context preview + switch; apply stays explicit)
 - [x] More providers beyond Supabase/GitHub — Sentry and Notion (official servers,
   env-injected secrets). Vercel is deliberately on hold: the community stdio server
   only accepts the token via **process args** (visible in `ps`, breaks the no-secret

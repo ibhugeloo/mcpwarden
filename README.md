@@ -115,7 +115,8 @@ Release notes and manual smoke tests live in [`docs/RELEASE.md`](docs/RELEASE.md
   only accepts the token via **process args** (visible in `ps`, breaks the no-secret
   invariant) and the official server is remote OAuth — neither fits the launcher model.
 - [x] Exportable audit report
-- [ ] Team/SaaS control plane design
+- [x] Team/SaaS control plane design — [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md)
+  (git-first shared registry; anything hosted is optional, additive, and secret-free)
 
 ## Providers
 

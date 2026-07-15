@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
-<title>mcpwarden — services MCP</title>
+<title>MCP Warden — services MCP</title>
 <style>
   :root {
     color-scheme: light;
@@ -41,8 +41,13 @@
   /* ── header ─────────────────────────────────────────────── */
   .top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:40px}
   .top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .brand h1{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-.02em;line-height:1.1;color:var(--ink)}
-  .brand p{font-size:14.5px;color:var(--ink-2);margin-top:6px;max-width:48ch}
+  .brand{display:flex;flex-direction:column;align-items:flex-start;gap:11px;min-width:0}
+  .brand-lockup{display:flex;align-items:center;gap:10px;min-width:0}
+  .brand-mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex-shrink:0;
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink)}
+  .brand-mark svg{width:22px;height:22px;display:block}
+  .brand h1{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:0;line-height:1.1;color:var(--ink)}
+  .btn-about{padding:8px 11px;font-size:13px}
 
   /* ── buttons ────────────────────────────────────────────── */
   .btn{
@@ -53,6 +58,8 @@
   }
   .btn svg{width:15px;height:15px;flex-shrink:0}
   .btn:active{transform:scale(.985)}
+  .btn:focus-visible,.icon-btn:focus-visible,.ctx-pill:focus-visible,.seg-opt:focus-visible,.cmd-copy:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px}
   .btn-lg{padding:11px 17px;font-size:14px}
   .btn-primary{background:var(--ink);color:#fff;padding:11px 17px;font-size:14px}
   .btn-primary:hover{background:#1f2426}
@@ -77,6 +84,16 @@
   .ctx-pill:hover{border-color:#DAD7D1;background:var(--surface-2);color:var(--ink)}
   .ctx-pill.is-active{color:#fff;background:var(--ink);border-color:var(--ink)}
   .ctx-note{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .ctx-commands{display:grid;gap:8px;margin:-4px 0 16px}
+  .ctx-command{display:grid;grid-template-columns:150px minmax(0,1fr) auto;align-items:center;gap:14px;
+    padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);
+    background:var(--surface)}
+  .ctx-command-meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .ctx-command-meta strong{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.3}
+  .ctx-command-meta span{font-size:11.5px;color:var(--ink-3);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ctx-command-code{display:block;min-width:0;font-family:var(--mono);font-size:12px;line-height:1.4;color:var(--ink-2);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:7px 9px;overflow:auto;white-space:nowrap;-webkit-font-smoothing:auto}
   .empty-state{padding:22px 20px;font-size:13.5px;color:var(--ink-3);text-align:center}
   .empty-state strong{color:var(--ink-2);font-weight:600}
 
@@ -198,6 +215,14 @@
   .seg-opt .seg-logo{display:inline-flex}
   .seg-opt .seg-logo svg{width:15px;height:15px;display:block}
 
+  /* ── about sheet ────────────────────────────────────────── */
+  .about-list{display:grid;gap:10px;margin:18px 0 20px}
+  .about-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;padding:12px;
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+  .about-index{font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:1.4;padding-top:1px}
+  .about-copy strong{display:block;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.35}
+  .about-copy span{display:block;margin-top:2px;font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+
   /* ── topology widget ────────────────────────────────────── */
   .topo-flow{display:flex;align-items:stretch;gap:14px;flex-wrap:wrap;
     border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:20px}
@@ -221,6 +246,21 @@
   .tl-name{font-family:var(--mono);font-size:12.5px;font-weight:550;color:var(--ink);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tl-meta{font-size:11.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ── command cheat sheet ────────────────────────────────── */
+  .commands-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .cmd-row{display:grid;grid-template-columns:150px minmax(0,1fr) auto;align-items:center;gap:14px;
+    padding:13px 16px;transition:background .15s ease}
+  .cmd-row+.cmd-row{border-top:1px solid var(--line-2)}
+  .cmd-row:hover{background:var(--surface-2)}
+  .cmd-meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .cmd-meta strong{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.3}
+  .cmd-meta span{font-size:11.5px;color:var(--ink-3);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cmd-code{display:block;min-width:0;font-family:var(--mono);font-size:12px;line-height:1.4;color:var(--ink-2);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:7px 9px;overflow:auto;white-space:nowrap;-webkit-font-smoothing:auto}
+  .cmd-copy{width:30px;height:30px;border-color:var(--line);background:var(--surface);flex-shrink:0}
+  .cmd-copy.is-copied{color:var(--accent);background:var(--accent-soft);border-color:#CFE0CE}
 
   /* ── registry preview ───────────────────────────────────── */
   .sheet-wide{max-width:680px}
@@ -262,6 +302,10 @@
   @media(max-width:560px){
     .svc-row{gap:10px 12px;padding:14px 16px}
     .svc-detail{padding-left:16px;padding-right:16px}
+    .ctx-command{grid-template-columns:minmax(0,1fr) auto;gap:8px 10px}
+    .ctx-command-meta{grid-column:1 / -1}
+    .cmd-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 10px}
+    .cmd-meta{grid-column:1 / -1}
     .secret-line{flex-wrap:wrap}
     .secret-line .sl-link{margin-left:0}
     .secrets-note{flex-wrap:wrap}
@@ -271,6 +315,7 @@
   @media(max-width:440px){
     .wrap{padding:40px 16px 72px}
     .top{align-items:flex-start}
+    .brand{width:100%}
     .top-actions{width:100%}
     .top-actions .btn-lg{flex:1;justify-content:center}
     .svc-logo{display:none}
@@ -282,8 +327,11 @@
   <div class="wrap">
     <header class="top">
       <div class="brand">
-        <h1>mcpwarden</h1>
-        <p>Connectez plusieurs comptes (Supabase, et bientôt d'autres) à Claude Code sans tout mélanger&nbsp;: un serveur MCP isolé par compte, les secrets gardés dans Vaultwarden, le tout appliqué à votre config en un clic.</p>
+        <div class="brand-lockup">
+          <span class="brand-mark">__BRAND_MARK__</span>
+          <h1>MCP Warden</h1>
+        </div>
+        <button type="button" class="btn btn-ghost btn-about" data-action="open-about">__INFO_ICON__ Comprendre l'app</button>
       </div>
       <div class="top-actions">
         <button type="button" class="icon-btn icon-btn-bordered" data-action="open-registry" title="Aperçu du registre" aria-label="Aperçu du registre">__EYE_ICON__</button>
@@ -295,6 +343,8 @@
 __SERVICES_BLOCK__
 
 __TOPOLOGY__
+
+__COMMANDS_BLOCK__
 
     <section class="block">
       <div class="secrets-note">
@@ -314,6 +364,33 @@ __TOPOLOGY__
   </div>
 
 __ADD_PANEL__
+
+  <div class="overlay" id="about-overlay" hidden>
+    <div class="sheet sheet-wide" role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <div class="sheet-head">
+        <h2 id="about-title">Ce que fait MCP Warden</h2>
+        <button type="button" class="icon-btn" data-action="close-about" aria-label="Fermer">__CLOSE_ICON__</button>
+      </div>
+      <p class="sheet-lead">Une frontière locale pour vos serveurs MCP&nbsp;: elle expose seulement le bon compte, dans le bon contexte, sans écrire de secret dans la configuration du client.</p>
+      <div class="about-list">
+        <div class="about-item">
+          <span class="about-index">01</span>
+          <div class="about-copy"><strong>Un compte = un serveur isolé</strong><span>Chaque compte provider reste séparé pour éviter les mélanges entre perso, client et production.</span></div>
+        </div>
+        <div class="about-item">
+          <span class="about-index">02</span>
+          <div class="about-copy"><strong>Contexte actif uniquement</strong><span>Le profil choisi est le seul exposé à Claude Code&nbsp;; les autres services gérés sont retirés de la vue.</span></div>
+        </div>
+        <div class="about-item">
+          <span class="about-index">03</span>
+          <div class="about-copy"><strong>Zéro secret écrit</strong><span>La config contient seulement <code>mcpwarden run</code>. Les secrets restent dans Vaultwarden et sont injectés au lancement.</span></div>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-primary" data-action="close-about">Compris</button>
+      </div>
+    </div>
+  </div>
 
   <div class="overlay" id="edit-overlay" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edit-title">
@@ -417,16 +494,21 @@ __ADD_PANEL__
   <script>
     (function () {
       var add = document.getElementById('add-overlay');
+      var about = document.getElementById('about-overlay');
       var edit = document.getElementById('edit-overlay');
       var registry = document.getElementById('registry-overlay');
       var secret = document.getElementById('secret-overlay');
       var disconnect = document.getElementById('disconnect-overlay');
       var apply = document.getElementById('apply-overlay');
-      var overlays = [add, edit, registry, secret, disconnect, apply];
+      var overlays = [add, about, edit, registry, secret, disconnect, apply];
       var current = null; // service name for secret/edit/disconnect flows
       var sessionToken = '__SESSION_TOKEN__';
 
-      function open(el) { el.hidden = false; }
+      function open(el) {
+        el.hidden = false;
+        var focusTarget = el.querySelector('.sheet-head .icon-btn, .sheet-foot .btn-primary, button');
+        if (focusTarget) focusTarget.focus();
+      }
       function closeAll() {
         overlays.forEach(function (o) { o.hidden = true; });
         // reset apply modal to its confirm state
@@ -461,6 +543,13 @@ __ADD_PANEL__
       }
 
       document.addEventListener('click', function (ev) {
+        var copyBtn = ev.target.closest('[data-copy-command]');
+        if (copyBtn) {
+          ev.preventDefault();
+          copyCommand(copyBtn);
+          return;
+        }
+
         // links inside a service row (e.g. "Ouvrir Vaultwarden") must open
         // without toggling the <details> — open them ourselves and stop the toggle.
         var rowLink = ev.target.closest('.svc-row a[href]');
@@ -482,9 +571,10 @@ __ADD_PANEL__
           post('/api/profile', { name: t.getAttribute('data-profile') || 'all' }, null, t);
         }
         else if (a === 'open-add') { clearErrors(); open(add); }
+        else if (a === 'open-about') { clearErrors(); open(about); }
         else if (a === 'open-apply') { clearErrors(); open(apply); }
         else if (a === 'open-registry') { clearErrors(); open(registry); loadRegistryPreview(); }
-        else if (a === 'close-add' || a === 'close-edit' || a === 'close-registry' || a === 'close-secret' || a === 'close-disconnect' || a === 'close-apply') closeAll();
+        else if (a === 'close-add' || a === 'close-about' || a === 'close-edit' || a === 'close-registry' || a === 'close-secret' || a === 'close-disconnect' || a === 'close-apply') closeAll();
         else if (a === 'submit-apply') { clearErrors(); doApply(t); }
         else if (a === 'edit') {
           current = svc; clearErrors();
@@ -564,6 +654,49 @@ __ADD_PANEL__
         document.getElementById('apply-result-body').innerHTML = html || '<div class="rline"><span class="rv muted">Rien à appliquer.</span></div>';
         document.getElementById('apply-confirm').hidden = true;
         document.getElementById('apply-result').hidden = false;
+      }
+
+      async function copyCommand(btn) {
+        var command = btn.getAttribute('data-copy-command') || '';
+        if (!command) return;
+        var copied = false;
+        try {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = command;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '0';
+            ta.style.left = '0';
+            ta.style.width = '1px';
+            ta.style.height = '1px';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus({ preventScroll: true });
+            ta.select();
+            ta.setSelectionRange(0, ta.value.length);
+            copied = document.execCommand('copy');
+            ta.remove();
+          } catch (_) {
+            copied = false;
+          }
+          if (!copied && navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+            await navigator.clipboard.writeText(command);
+            copied = true;
+          }
+          if (!copied) throw new Error('copy failed');
+          btn.classList.add('is-copied');
+          btn.setAttribute('title', 'Copié');
+          btn.setAttribute('aria-label', 'Commande copiée');
+          window.setTimeout(function () {
+            btn.classList.remove('is-copied');
+            btn.setAttribute('title', 'Copier la commande');
+            btn.setAttribute('aria-label', 'Copier la commande');
+          }, 1200);
+        } catch (err) {
+          btn.setAttribute('title', 'Copie impossible');
+          btn.setAttribute('aria-label', 'Copie impossible');
+        }
       }
 
       async function loadRegistryPreview() {

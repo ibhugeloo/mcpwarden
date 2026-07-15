@@ -58,7 +58,14 @@ const ICON = {
     `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6"/><path d="M4.6 6.6 6.6 8 4.6 9.4"/><path d="M8.4 9.6H11"/></svg>`,
   shield: () =>
     `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13 3.6v3.3c0 3.4-2.1 5.8-5 6.9-2.9-1.1-5-3.5-5-6.9V3.6L8 1.8z"/><path d="M5.8 8 7.4 9.6 10.4 6.4"/></svg>`,
+  info: () =>
+    `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.4v4.1"/><path d="M8 4.7h.01"/></svg>`,
+  copy: () =>
+    `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.4"/><path d="M3 10.8H2.8A1.8 1.8 0 0 1 1 9V2.8A1.8 1.8 0 0 1 2.8 1H9a1.8 1.8 0 0 1 1.8 1.8V3"/></svg>`,
 };
+
+const BRAND_MARK = () =>
+  `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="3.5" width="19" height="21" rx="4" stroke-width="1.4"/><path d="M14 7.2 19 9v3.4c0 3.2-1.9 5.5-5 6.6-3.1-1.1-5-3.4-5-6.6V9l5-1.8z" stroke-width="1.4"/><path d="M11.5 13.2h5M14 10.7v5" stroke-width="1.3"/></svg>`;
 
 /** Brand logos — real colours, not currentColor. */
 const LOGO = {
@@ -78,6 +85,14 @@ const providerLogo = (provider: string): string =>
   (LOGO as Record<string, () => string>)[provider]?.() ?? ICON.shield();
 const providerLabel = (provider: string): string =>
   provider.charAt(0).toUpperCase() + provider.slice(1);
+const shellArg = (value: string): string =>
+  /^[A-Za-z0-9._:/-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+const profileSwitchTargets = (profiles: string[]): string[] =>
+  profiles.length ? profiles : ["all"];
+const profileSwitchCommand = (profile: string): string =>
+  `mcpwarden profile use ${shellArg(profile)} --apply`;
+const profileSwitchLabel = (profile: string): string =>
+  profile === "all" ? "Basculer tous" : `Basculer ${profile}`;
 
 /** One service row: provider logo · name · account · symbol-only quick actions. */
 function serviceRow(s: McpServer, accounts: Map<string, Account>): string {
@@ -155,6 +170,20 @@ function profileSwitcher(active: string | null, profiles: string[], shown: numbe
     `<button type="button" class="ctx-pill${on ? " is-active" : ""}" data-action="set-profile" data-profile="${e(prof)}">${e(label)}</button>`;
   let pills = pill("Tous", "all", active === null);
   for (const p of profiles) pills += pill(p, p, active === p);
+  const switchRows = profileSwitchTargets(profiles)
+    .map((profile) => {
+      const command = profileSwitchCommand(profile);
+      const note = profile === "all" ? "Expose tous les services" : "Applique ce contexte à Claude Code";
+      return `        <div class="ctx-command">
+          <span class="ctx-command-meta">
+            <strong>${e(profileSwitchLabel(profile))}</strong>
+            <span>${e(note)}</span>
+          </span>
+          <code class="ctx-command-code">${e(command)}</code>
+          <button type="button" class="icon-btn cmd-copy" data-copy-command="${e(command)}" title="Copier la commande" aria-label="Copier la commande">${ICON.copy()}</button>
+        </div>`;
+    })
+    .join("\n");
   const note =
     hidden > 0
       ? `${shown} exposé${shown > 1 ? "s" : ""} · ${hidden} masqué${hidden > 1 ? "s" : ""}`
@@ -163,6 +192,9 @@ function profileSwitcher(active: string | null, profiles: string[], shown: numbe
         <span class="ctx-label">Contexte</span>
         <div class="ctx-pills">${pills}</div>
         <span class="ctx-note">${note}</span>
+      </div>
+      <div class="ctx-commands">
+${switchRows}
       </div>`;
 }
 
@@ -207,6 +239,78 @@ function topologyWidget(servers: McpServer[], accounts: Map<string, Account>): s
         <div class="topo-leaves">
 ${leaves || '          <div class="topo-leaf"><span class="tl-body"><span class="tl-meta">aucun serveur dans ce contexte</span></span></div>'}
         </div>
+      </div>
+    </section>`;
+}
+
+/** Compact CLI cheat sheet for users who prefer copying commands from the console. */
+function commandCheatSheet(active: string | null, profiles: string[]): string {
+  const profile = active ?? profiles[0] ?? "client";
+  const profileArg = shellArg(profile);
+  const switchRows = profileSwitchTargets(profiles).map((target) => ({
+    label: profileSwitchLabel(target),
+    note: target === "all" ? "Expose tout puis applique" : "Expose ce contexte puis applique",
+    command: profileSwitchCommand(target),
+  }));
+  const rows = [
+    {
+      label: "Voir l'état",
+      note: "Services, comptes, profils",
+      command: "mcpwarden list",
+    },
+    {
+      label: "Contrôler",
+      note: "Registry, secrets, politique",
+      command: "mcpwarden doctor --privacy",
+    },
+    ...switchRows,
+    {
+      label: "Ajouter",
+      note: "Compte Supabase isolé",
+      command: `mcpwarden add supabase perso --secret vaultwarden://supabase/pat --profile ${profileArg} --apply`,
+    },
+    {
+      label: "Prévisualiser",
+      note: "Sans écrire la config",
+      command: "mcpwarden apply --dry-run",
+    },
+    {
+      label: "Appliquer",
+      note: "Écrit les lanceurs",
+      command: "mcpwarden apply",
+    },
+    {
+      label: "Auditer",
+      note: "Rapport partageable",
+      command: "mcpwarden audit --format markdown --output audit.md",
+    },
+    {
+      label: "Revenir",
+      note: "Sauvegarde précédente",
+      command: "mcpwarden rollback --dry-run",
+    },
+  ];
+
+  const body = rows
+    .map(
+      (r) => `        <div class="cmd-row">
+          <span class="cmd-meta">
+            <strong>${e(r.label)}</strong>
+            <span>${e(r.note)}</span>
+          </span>
+          <code class="cmd-code">${e(r.command)}</code>
+          <button type="button" class="icon-btn cmd-copy" data-copy-command="${e(r.command)}" title="Copier la commande" aria-label="Copier la commande">${ICON.copy()}</button>
+        </div>`,
+    )
+    .join("\n");
+
+  return `    <section class="block commands-block">
+      <div class="block-head">
+        <h2>Commandes</h2>
+        <span class="count">antisèche CLI</span>
+      </div>
+      <div class="commands-panel">
+${body}
       </div>
     </section>`;
 }
@@ -300,12 +404,15 @@ ${shown.length ? shown.map((s) => serviceRow(s, accounts)).join("\n") : emptySer
     __TS__: e(ts),
     __SERVICES_BLOCK__: servicesBlock,
     __TOPOLOGY__: topologyWidget(shown, accounts),
+    __COMMANDS_BLOCK__: commandCheatSheet(ctx.active, ctx.profiles),
     __ADD_PANEL__: addPanel(),
     __SECRET_COUNT__: String(acctCount),
     __VAULT_URL__: e(VAULT_URL),
     __PLUS_ICON__: ICON.plus(),
     __UPLOAD_ICON__: ICON.upload(),
     __EYE_ICON__: ICON.eye(),
+    __INFO_ICON__: ICON.info(),
+    __BRAND_MARK__: BRAND_MARK(),
     __EXTERNAL_ICON__: ICON.external(),
     __VAULT_ICON__: ICON.vault(),
     __CLOSE_ICON__: ICON.close(),

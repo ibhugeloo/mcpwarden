@@ -64,8 +64,13 @@ export function serveCommand(opts: {
     }
 
     if (!isAuthorized(req, url, sessionToken)) {
-      res.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
-      res.end("mcpwarden console: use the session URL printed by the CLI.\n");
+      res.writeHead(403, { "content-type": "text/html; charset=utf-8" });
+      res.end(renderServeMessagePage({
+        title: "Session token required",
+        lead: "Use the private console URL printed by mcpwarden serve.",
+        detail: "The local console is protected because it can mutate the registry and apply ~/.claude.json.",
+        commands: ["mcpwarden serve"],
+      }));
       return;
     }
 
@@ -77,8 +82,17 @@ export function serveCommand(opts: {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       res.end(renderDashboard(reg, ts, { active, profiles, sessionToken }));
     } catch (err) {
-      res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
-      res.end(`registry error:\n${(err as Error).message}`);
+      res.writeHead(500, { "content-type": "text/html; charset=utf-8" });
+      res.end(renderServeMessagePage({
+        title: "Registry inaccessible",
+        lead: "mcpwarden could not read the local registry for this console.",
+        detail: (err as Error).message,
+        commands: [
+          "mcpwarden doctor --fix",
+          "mcpwarden init",
+          "mcpwarden serve --registry ~/.config/mcpwarden",
+        ],
+      }));
     }
   });
 
@@ -126,6 +140,66 @@ function redactRegistryPreview(raw: string): string {
   return raw
     .replace(/^(\s*secret_ref:\s*).+$/gm, "$1[redacted reference]")
     .replace(/\b(?:vaultwarden|env):\/\/[^\s"',)]+/g, "[redacted reference]");
+}
+
+function renderServeMessagePage(input: {
+  title: string;
+  lead: string;
+  detail: string;
+  commands: string[];
+}): string {
+  const commands = input.commands
+    .map((cmd) => `<code>${html(cmd)}</code>`)
+    .join("");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light" />
+<title>mcpwarden — ${html(input.title)}</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#F7F6F3;--surface:#FFFFFF;--surface-2:#FBFBFA;--surface-3:#F1EFEB;
+    --ink:#2F3437;--ink-2:#5C615F;--ink-3:#8A8E8B;--line:#E7E5E0;
+    --accent:#346538;--accent-soft:#EDF3EC;--danger:#9F2F2D;
+    --radius:10px;--radius-sm:6px;
+    --sans:"SF Pro Display","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;display:grid;place-items:center;padding:28px}
+  .panel{width:min(640px,100%);background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:30px 32px}
+  h1{font-family:var(--serif);font-size:26px;font-weight:500;letter-spacing:-.01em;line-height:1.15;margin-bottom:8px}
+  .lead{color:var(--ink-2);margin-bottom:20px}
+  .detail{border:1px solid var(--line);background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:12px 14px;color:var(--ink-2);font-family:var(--mono);font-size:12.5px;overflow:auto;white-space:pre-wrap}
+  .next{margin-top:20px;color:var(--ink);font-weight:600;font-size:13px}
+  .cmds{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  code{display:block;border:1px solid var(--line);background:var(--surface-3);border-radius:var(--radius-sm);
+    padding:8px 10px;font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .foot{margin-top:20px;color:var(--ink-3);font-size:12.5px}
+</style>
+</head>
+<body>
+  <main class="panel">
+    <h1>${html(input.title)}</h1>
+    <p class="lead">${html(input.lead)}</p>
+    <pre class="detail">${html(input.detail)}</pre>
+    <p class="next">Recovery commands</p>
+    <div class="cmds">${commands}</div>
+    <p class="foot">After fixing the registry, reload the private console URL printed in the terminal.</p>
+  </main>
+</body>
+</html>`;
+}
+
+function html(value: string): string {
+  return value.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 }
 
 function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {

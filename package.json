@@ -13,7 +13,7 @@
     "dev": "tsx src/cli.ts",
     "build": "tsup",
     "start": "node dist/cli.js",
-    "test": "node --import tsx --test test/**/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "release:check": "tsx src/cli.ts release-check"
   },

@@ -51,6 +51,8 @@ program
   .command("audit")
   .description("show what the active context exposes to MCP clients")
   .option("--json", "emit machine-readable JSON")
+  .option("--format <format>", "output format: text, json, markdown")
+  .option("-o, --output <file>", "write audit output to a file (defaults to markdown format)")
   .action((cmdOpts) => auditCommand({ ...program.opts(), ...cmdOpts }));
 
 program

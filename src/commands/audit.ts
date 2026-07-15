@@ -1,16 +1,55 @@
 import chalk from "chalk";
+import { writeFileSync } from "node:fs";
 import { loadRegistry } from "../core/registry.js";
-import { buildAuditReport, type AuditExposure } from "../core/audit.js";
+import { buildAuditReport, renderAuditMarkdown, type AuditExposure, type AuditReport } from "../core/audit.js";
 
-export function auditCommand(opts: { registry?: string; json?: boolean }): void {
+type AuditFormat = "text" | "json" | "markdown";
+
+export function auditCommand(opts: {
+  registry?: string;
+  json?: boolean;
+  format?: string;
+  output?: string;
+}): void {
   const reg = loadRegistry(opts.registry);
   const report = buildAuditReport(reg);
+  const format = resolveFormat(opts);
 
-  if (opts.json) {
-    console.log(JSON.stringify(report, null, 2));
+  if (opts.output) {
+    const body = renderAudit(report, format === "text" ? "markdown" : format);
+    writeFileSync(opts.output, body.endsWith("\n") ? body : `${body}\n`, "utf8");
+    console.log(`\n  ${chalk.green("✓")} audit written ${chalk.gray(opts.output)}\n`);
     return;
   }
 
+  if (format === "json") {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  if (format === "markdown") {
+    console.log(renderAuditMarkdown(report));
+    return;
+  }
+
+  renderAuditText(report);
+}
+
+function resolveFormat(opts: { json?: boolean; format?: string; output?: string }): AuditFormat {
+  if (opts.json) return "json";
+  if (!opts.format) return opts.output ? "markdown" : "text";
+  if (opts.format === "text" || opts.format === "json" || opts.format === "markdown") {
+    return opts.format;
+  }
+  throw new Error(`Unknown audit format "${opts.format}". Supported: text, json, markdown.`);
+}
+
+function renderAudit(report: AuditReport, format: AuditFormat): string {
+  if (format === "json") return JSON.stringify(report, null, 2);
+  if (format === "markdown") return renderAuditMarkdown(report);
+  return renderAuditPlain(report);
+}
+
+function renderAuditText(report: AuditReport): void {
   console.log();
   console.log(`${chalk.bold("  audit")} ${chalk.gray(`— registry: ${report.registryDir}`)}`);
   console.log(`  ${chalk.gray(`context: ${report.activeProfile ?? "all (no profile)"}`)}`);
@@ -52,6 +91,32 @@ export function auditCommand(opts: { registry?: string; json?: boolean }): void 
     console.log(`  ${chalk.gray(`hidden: ${report.hidden.join(", ")}`)}`);
   }
   console.log();
+}
+
+function renderAuditPlain(report: AuditReport): string {
+  const lines: string[] = [];
+  lines.push(`audit — registry: ${report.registryDir}`);
+  lines.push(`context: ${report.activeProfile ?? "all (no profile)"}`);
+  lines.push(`${report.exposed.length} exposed · ${report.hidden.length} hidden · ${riskSummary(report.exposed)}`);
+  if (report.warnings.length) {
+    lines.push("");
+    for (const warning of report.warnings) lines.push(`! ${warning}`);
+  }
+  lines.push("");
+  for (const e of report.exposed) {
+    const policy = e.readOnly ? "read-only" : "WRITE";
+    const scope = e.projectScope === "project" ? "scope:project" : "scope:account";
+    const tags = e.profiles.length ? `[${e.profiles.join(", ")}]` : "[ubiquitous]";
+    lines.push(`${e.server} (${e.provider}) ${policy} ${scope}`);
+    lines.push(`  ${e.label} · account ${e.account} · ${tags} · secret ${e.secretRef}`);
+    lines.push(`  ${e.resources} resources · ${e.clientDataResources} marked client-data`);
+  }
+  if (!report.exposed.length) lines.push("(no exposed servers)");
+  if (report.hidden.length) {
+    lines.push("");
+    lines.push(`hidden: ${report.hidden.join(", ")}`);
+  }
+  return lines.join("\n");
 }
 
 function riskLabel(e: AuditExposure): string {

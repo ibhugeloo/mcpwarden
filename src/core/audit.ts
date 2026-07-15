@@ -90,3 +90,79 @@ function auditWarnings(activeProfile: string | null, exposed: AuditExposure[]): 
 
   return [...new Set(warnings)];
 }
+
+export function renderAuditMarkdown(report: AuditReport): string {
+  const lines: string[] = [];
+  lines.push("# mcpwarden audit report");
+  lines.push("");
+  lines.push(`- Registry: \`${escapeInlineCode(report.registryDir)}\``);
+  lines.push(`- Context: \`${escapeInlineCode(report.activeProfile ?? "all (no profile)")}\``);
+  lines.push(`- Exposed servers: ${report.exposed.length}`);
+  lines.push(`- Hidden servers: ${report.hidden.length}`);
+  lines.push("");
+
+  lines.push("## Warnings");
+  lines.push("");
+  if (report.warnings.length) {
+    for (const warning of report.warnings) lines.push(`- ${escapeMarkdown(warning)}`);
+  } else {
+    lines.push("- None");
+  }
+  lines.push("");
+
+  lines.push("## Exposed Servers");
+  lines.push("");
+  if (report.exposed.length) {
+    lines.push(
+      "| Server | Provider | Account | Risk | Policy | Scope | Profiles | Resources | Secret Ref |",
+    );
+    lines.push("|---|---|---|---|---|---|---|---:|---|");
+    for (const e of report.exposed) {
+      lines.push(
+        [
+          escapeTable(e.server),
+          escapeTable(e.provider),
+          escapeTable(e.account),
+          escapeTable(e.riskDomain),
+          e.readOnly ? "read-only" : "WRITE",
+          escapeTable(e.projectScope),
+          escapeTable(e.profiles.length ? e.profiles.join(", ") : "ubiquitous"),
+          String(e.resources),
+          `\`${escapeInlineCode(e.secretRef)}\``,
+        ].join(" | ").replace(/^/, "| ") + " |",
+      );
+    }
+  } else {
+    lines.push("_No MCP servers exposed in this context._");
+  }
+  lines.push("");
+
+  lines.push("## Hidden Servers");
+  lines.push("");
+  if (report.hidden.length) {
+    for (const name of report.hidden) lines.push(`- \`${escapeInlineCode(name)}\``);
+  } else {
+    lines.push("- None");
+  }
+  lines.push("");
+  lines.push("## Secret Safety");
+  lines.push("");
+  lines.push("- Secret values are not included.");
+  lines.push("- Secret references are redacted to backend schemes only.");
+  lines.push("- Generated client config should remain launcher-only (`mcpwarden run <server>`).");
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+function escapeMarkdown(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/([*_#[\]()!])/g, "\\$1");
+}
+
+function escapeTable(value: string): string {
+  return escapeMarkdown(value).replace(/\|/g, "\\|");
+}
+
+function escapeInlineCode(value: string): string {
+  return value.replace(/`/g, "\\`");
+}

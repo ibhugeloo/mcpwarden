@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadRegistry, saveActiveProfile } from "../src/core/registry.js";
-import { buildAuditReport, redactSecretRef } from "../src/core/audit.js";
+import { buildAuditReport, redactSecretRef, renderAuditMarkdown } from "../src/core/audit.js";
+import { auditCommand } from "../src/commands/audit.js";
 
 function registryDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "mcpwarden-audit-"));
@@ -83,4 +84,31 @@ test("redactSecretRef keeps only the backend scheme", () => {
   assert.equal(redactSecretRef("vaultwarden://client/acme-prod#password"), "vaultwarden://[redacted]");
   assert.equal(redactSecretRef("env://TOKEN"), "env://[redacted]");
   assert.equal(redactSecretRef("not-a-ref"), "[redacted]");
+});
+
+test("renderAuditMarkdown produces a redacted client-safe report", () => {
+  const dir = registryDir();
+  const markdown = renderAuditMarkdown(buildAuditReport(loadRegistry(dir)));
+
+  assert.match(markdown, /^# mcpwarden audit report/);
+  assert.match(markdown, /\| Server \| Provider \| Account \| Risk \| Policy \|/);
+  assert.match(markdown, /vaultwarden:\/\/\[redacted\]/);
+  assert.equal(markdown.includes("client-token"), false);
+  assert.equal(markdown.includes("personal-token"), false);
+});
+
+test("audit --output writes markdown by default", () => {
+  const dir = registryDir();
+  const out = join(dir, "audit.md");
+  const log = console.log;
+  console.log = () => undefined;
+  try {
+    auditCommand({ registry: dir, output: out });
+  } finally {
+    console.log = log;
+  }
+
+  const markdown = readFileSync(out, "utf8");
+  assert.match(markdown, /^# mcpwarden audit report/);
+  assert.equal(markdown.includes("client-token"), false);
 });

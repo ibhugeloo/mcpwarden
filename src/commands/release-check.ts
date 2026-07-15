@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { auditCommand } from "./audit.js";
 import { initCommand } from "./init.js";
 import { doctorCommand } from "./doctor.js";
 import { loadRegistry, saveActiveProfile } from "../core/registry.js";
@@ -50,6 +51,13 @@ export function releaseCheckCommand(): void {
   gates.push({
     name: "audit redacts secret references",
     ok: !JSON.stringify(audit).includes("supabase-pat-personal"),
+  });
+  const auditPath = join(dir, "audit.md");
+  silenceConsole(() => auditCommand({ registry: dir, output: auditPath }));
+  const exportedAudit = readFileSync(auditPath, "utf8");
+  gates.push({
+    name: "audit markdown export is redacted",
+    ok: exportedAudit.startsWith("# mcpwarden audit report") && !exportedAudit.includes("supabase-pat-personal"),
   });
 
   const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {

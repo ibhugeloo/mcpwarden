@@ -48,8 +48,15 @@ mcpwarden add github acme-gh \
   --apply
 ```
 
-`mcpwarden audit` shows exactly what the active context exposes to MCP clients. `mcpwarden
-doctor --fix` only performs conservative local fixes, currently registry file permissions.
+`mcpwarden audit` shows exactly what the active context exposes to MCP clients. Export a
+client-safe report with:
+
+```bash
+mcpwarden audit --output audit.md
+```
+
+`mcpwarden doctor --fix` only performs conservative local fixes, currently registry file
+permissions.
 
 ## What it is — and is not
 
@@ -100,7 +107,7 @@ Release notes and manual smoke tests live in [`docs/RELEASE.md`](docs/RELEASE.md
 
 - [ ] Ink TUI dashboard
 - [ ] More providers beyond Supabase/GitHub (Vercel, Sentry, Notion…)
-- [ ] Exportable audit report
+- [x] Exportable audit report
 - [ ] Team/SaaS control plane design
 
 ## Providers

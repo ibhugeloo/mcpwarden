@@ -28,11 +28,12 @@ mcpwarden --registry "$tmp" add github acme-gh \
   --profile acme
 mcpwarden --registry "$tmp" profile use acme
 mcpwarden --registry "$tmp" audit
+mcpwarden --registry "$tmp" audit --output "$tmp/audit.md"
 ```
 
 Expected result: no secret values or full secret refs appear in generated client
-config or audit output. `add` may warn that the test env var is missing; that is
-acceptable for the smoke test.
+config, audit output, or the exported Markdown report. `add` may warn that the
+test env var is missing; that is acceptable for the smoke test.
 
 ## Manual checks
 

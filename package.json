@@ -1,6 +1,6 @@
 {
   "name": "mcpwarden",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Local-first CLI/TUI to manage multi-account MCP servers across providers — secret-safe by design.",
   "type": "module",
   "bin": {
